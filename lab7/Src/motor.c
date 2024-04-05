@@ -10,8 +10,8 @@ volatile int16_t target_rpm = 0;    	// Desired speed target
 volatile int16_t motor_speed = 0;   	// Measured motor speed
 volatile int8_t adc_value = 0;      	// ADC measured motor current
 volatile int16_t error = 0;         	// Speed error signal
-volatile uint8_t Kp = 1;            	// Proportional gain
-volatile uint8_t Ki = 1;            	// Integral gain
+volatile uint8_t Kp = 10;            	// Proportional gain
+volatile uint8_t Ki = 5;            	// Integral gain
 
 // Sets up the entire motor drive system
 void motor_init(void) {
@@ -94,9 +94,12 @@ void encoder_init(void) {
     
     // Select PSC and ARR values that give an appropriate interrupt rate
     //500 kHz, 2 us between ticks, 5:1 ratio between encoder count and output RPM
-    TIM6->PSC = 15;
-    TIM6->ARR = 46875;
-    
+    //TIM6->PSC = 15;
+    //TIM6->ARR = 46875;
+    TIM6->PSC = 11;
+    TIM6->ARR = 30000;
+   
+
     TIM6->DIER |= TIM_DIER_UIE;             // Enable update event interrupt
     TIM6->CR1 |= TIM_CR1_CEN;               // Enable Timer
 
@@ -167,11 +170,11 @@ void PI_update(void) {
      *       more resolution.
      */
     
-    error =  (target_rpm * 5) - motor_speed;
+    error = (target_rpm * 2) - motor_speed;
     
     /// TODO: Calculate integral portion of PI controller, write to "error_integral" variable
     
-    error_integral = Ki * (error_integral + error);
+    error_integral = error_integral + (Ki * error);
 
     /// TODO: Clamp the value of the integral to a limited positive range
     
@@ -211,7 +214,7 @@ void PI_update(void) {
     output = output >> 5;
 
      /// TODO: Clamp the output value between 0 and 100 
-    if (output < 0)
+    if (output < 0 || target_rpm == 0)
         output = 0;
     if (output > 100)
         output = 100;
